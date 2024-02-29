@@ -1,3 +1,4 @@
 from django.shortcuts import render
 
-# Create your views here.
+def API_GET_LIST_OF_PRODUCTS(request) :
+    pass
