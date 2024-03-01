@@ -16,7 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from SystemForStudy.views import API_GET_LIST_OF_PRODUCTS, API_GET_LIST_OF_LESSONS
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/get/products', API_GET_LIST_OF_PRODUCTS),
+    path('api/get/lessons', API_GET_LIST_OF_LESSONS)
 ]

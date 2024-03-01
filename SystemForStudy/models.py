@@ -1,26 +1,27 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.contrib.auth.models import User
 
 class Product(models.Model):
-    name = models.CharField(max_length=200)
-    author = models.CharField(max_length=200)
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
     start_time = models.DateTimeField()
-    price = models.IntegerField(default=0)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    students = models.ManyToManyField(User, related_name='product_students', default=None)
 
 class Lesson(models.Model):
-    name = models.CharField(max_length=200)
-    link_to_video = models.URLField(max_length=500)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    link_to_video = models.URLField(max_length=500)
 
 class Group(models.Model):
-    name = models.CharField(max_length=200)
-    min_students = models.IntegerField(default=0)
-    max_students = models.IntegerField(default=0)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-class User(models.Model):
-    first_name = models.CharField(max_length=200)
-    last_name = models.CharField(max_length=200)
-    email = models.EmailField(max_length=254)
-    password = models.CharField(max_length=50)
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
-    product = models.ManyToManyField(Product)
+    name = models.CharField(max_length=255)
+    students = models.ManyToManyField(User, related_name='product_groups')
+    min_users = models.PositiveIntegerField(default=0)
+    max_users = models.PositiveIntegerField(default=0)
+
+    def clean(self):
+        if self.min_users > self.max_users:
+            raise ValidationError("Min users cannot be greater than max users.")
 
