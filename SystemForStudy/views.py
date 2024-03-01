@@ -1,68 +1,83 @@
-import json
-
 from django.contrib.auth.models import User
-from django.core.serializers.json import DjangoJSONEncoder
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render
+from django.http import JsonResponse
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 
-from SystemForStudy.models import Product, Lesson, Group
+from SystemForStudy.models import Product, Lesson
 
 
-def API_GET_LIST_OF_PRODUCTS(request):
-    user_email = request.GET.get('email', '')
-    user_password = request.GET.get('password', '')
+class GetProductsAPIView(APIView):
+    permission_classes = [IsAuthenticated, ]
 
-    if user_email == '' or user_password == '':
-        return JsonResponse({"err": "Invalid email or password"}, status=400)
-    user = User.objects.get(email=user_email)
+    @staticmethod
+    def get(request):
+        if request.method == 'GET':
+            if request.user.is_authenticated:
+                products_db = Product.objects.exclude(students__id=request.user.id).order_by('id')
+                data = list()
+                for product_db in products_db:
+                    lessons_db = Lesson.objects.filter(product_id=product_db.id).order_by('id')
+                    product = {
+                        'id': product_db.id,
+                        'name': product_db.name,
+                        'price': product_db.price,
+                        'lessons_quantity': lessons_db.count(),
+                        'author_id': product_db.author_id
+                    }
+                    data.append(product)
+                return JsonResponse(data, safe=False)
+        return JsonResponse({"msg": "Incorrect request"}, status=404)
 
-    if user is None:
-        return JsonResponse({"err": "User not found"}, status=400)
 
-    if not user.check_password(user_password):
-        return JsonResponse({"err": "Password is incorrect"}, status=401)
+class GetLessonsAPIView(APIView):
+    permission_classes = [IsAuthenticated, ]
 
-    products_db = Product.objects.exclude(students__id=user.id).order_by('id')
-    data = list()
-    for product_db in products_db:
-        lessons_db = Lesson.objects.filter(product_id=product_db.id).order_by('id')
-        product = {
-            'id': product_db.id,
-            'name': product_db.name,
-            'price': product_db.price,
-            'lessons_quantity': lessons_db.count(),
-            'author_id': product_db.author_id
-        }
-        data.append(product)
-    return JsonResponse(data, safe=False)
+    @staticmethod
+    def get(request):
+        if request.method == 'GET':
+            product_id = request.GET.get('product_id', '')
+            products_db = Product.objects.filter(students__id=request.user.id).order_by('id')
 
-def API_GET_LIST_OF_LESSONS(request):
-    user_email = request.GET.get('email', '')
-    user_password = request.GET.get('password', '')
+            for product_db in products_db:
+                if int(product_db.id) == int(product_id):
+                    lessons_db = Lesson.objects.filter(product_id=product_id)
+                    data = list()
+                    for lesson_db in lessons_db:
+                        lesson = {
+                            'id': lesson_db.id,
+                            'name': lesson_db.name,
+                            'link_to_video': lesson_db.link_to_video,
+                        }
+                        data.append(lesson)
+                    return JsonResponse(data, safe=False)
+            return JsonResponse({"msg": "Unauthorized"}, status=400)
 
-    if user_email == '' or user_password == '':
-        return JsonResponse({"err": "Invalid email or password"}, status=400)
-    user = User.objects.get(email=user_email)
 
-    if user is None:
-        return JsonResponse({"err": "User not found"}, status=400)
+class GetQuantityOfStudentsAPIView(APIView):
+    permission_classes = [IsAuthenticated, ]
 
-    if not user.check_password(user_password):
-        return JsonResponse({"err": "Password is incorrect"}, status=401)
+    @staticmethod
+    def get(request):
+        if request.method == 'GET':
+            product_id = request.GET.get('product_id', '')
+            if product_id == '':
+                return JsonResponse({"msg": "Product id is incorrect"}, status=404)
 
-    product_id = request.GET.get('product_id', '')
-    products_db = Product.objects.filter(students__id=user.id).order_by('id')
+            product_db = Product.objects.get(id=product_id)
+            if product_db is None:
+                return JsonResponse({"msg": "Not found"}, status=404)
 
-    for product_db in products_db:
-        if int(product_db.id) == int(product_id):
-            lessons_db = Lesson.objects.filter(product_id=product_id)
-            data = list()
-            for lesson_db in lessons_db:
-                lesson = {
-                    'id': lesson_db.id,
-                    'name': lesson_db.name,
-                    'link_to_video': lesson_db.link_to_video,
-                }
-                data.append(lesson)
-            return JsonResponse(data, safe=False)
-    return JsonResponse({"err": "Unauthorized"}, status=400)
+            quantity_of_students = product_db.students.count()
+            return JsonResponse({"quantity_of_students": quantity_of_students}, status=200)
+
+
+class RegisterStudentAPIView(APIView):
+    @staticmethod
+    def post(request):
+        if request.method == "POST":
+            product_id = request.POST.get('product_id', '')
+            product = Product.objects.get(id=product_id)
+            product.students.add(request.user)
+            product.rebuild_groups()
+            product.save()
+            return JsonResponse({"msg": "Student registered"}, status=200)

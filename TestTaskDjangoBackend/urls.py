@@ -16,10 +16,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from SystemForStudy.views import API_GET_LIST_OF_PRODUCTS, API_GET_LIST_OF_LESSONS
+from rest_framework_simplejwt.views import TokenRefreshView, TokenObtainPairView, TokenVerifyView
+
+from SystemForStudy.views import *
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/get/products', API_GET_LIST_OF_PRODUCTS),
-    path('api/get/lessons', API_GET_LIST_OF_LESSONS)
+    path('api/get/products', GetProductsAPIView.as_view(), name='get_products'),
+    path('api/get/lessons', GetLessonsAPIView.as_view(), name='get_lessons'),
+    path('api/get/quantity_of_students', GetQuantityOfStudentsAPIView.as_view(), name='get_quantity_of_students'),
+    path('api/register_student_for_product', RegisterStudentAPIView.as_view(), name='register_student_for_product'),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 ]
