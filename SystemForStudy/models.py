@@ -12,7 +12,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     students = models.ManyToManyField(User, related_name='product_students', default=None)
 
-    def rebuild_groups(self):
+    def rebuild_groups(self, user):
         groups = Group.objects.filter(product_id=self.id).order_by('id')
         students = self.students.all()
 
@@ -43,33 +43,62 @@ class Product(models.Model):
                 i = 0
                 for group in groups:
                     group.students.clear()
-                    while group.students.count() < group.min_users and i < students.count():
+                    while group.students.count() < group.min_users:
+                        if i >= students.count():
+                            raise RuntimeError("Students amount registered for the product is less than minimal "
+                                               "needed. " +
+                                               "Check Product Groups")
                         group.students.add(students[i])
                         i += 1
                 for group in groups:
-                    group.students.clear()
                     while group.students.count() < group.max_users and i < students.count():
                         group.students.add(students[i])
                         i += 1
             elif target_students_in_group == -2:
                 i = 0
                 for group in groups:
-                    group.students.all().delete()
-                    while group.students.count() < group.min_users and i < students.count():
+                    group.students.clear()
+                    while group.students.count() < group.min_users:
+                        if i >= students.count():
+                            raise RuntimeError("Students amount registered for the product is less than minimal "
+                                               "needed. " +
+                                               "Check Product Groups")
                         group.students.add(students[i])
                         i += 1
             else:
                 i = 0
                 for group in groups:
-                    group.students.all().delete()
-                    while group.students.count() < group.max_users and i < students.count():
+                    group.students.clear()
+                    while group.students.count() < group.min_users:
+                        if i >= students.count():
+                            raise RuntimeError("Students amount registered for the product is less than minimal "
+                                               "needed. " +
+                                               "Check Product Groups")
                         group.students.add(students[i])
                         i += 1
                 for group in groups:
-                    group.students.all().delete()
                     while group.students.count() < target_students_in_group and i < students.count():
                         group.students.add(students[i])
                         i += 1
+        else:
+            for group in groups:
+                if group.students.count() < group.max_users:
+                    group.students.add(user)
+
+    def percent_of_fullness(self):
+        groups = Group.objects.filter(product_id=self.id).order_by('id')
+        max_students_project = 0
+        for group in groups:
+            max_students_project += group.max_users
+        if max_students_project >= self.students.count():
+            return (self.students.count() / max_students_project) * 100
+        else:
+            raise ValueError("Quantity of users for project is more than allowed")
+
+    def buying_rating(self):
+        users_count = User.objects.count()
+        students_count = self.students.count()
+        return (students_count / users_count) * 100
 
 
 class Lesson(models.Model):
@@ -88,3 +117,6 @@ class Group(models.Model):
     def clean(self):
         if self.min_users > self.max_users:
             raise ValidationError("Min users cannot be greater than max users.")
+
+    def percent_of_fullness(self):
+        return (self.students.count() / self.max_users) * 100
