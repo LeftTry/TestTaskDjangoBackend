@@ -54,8 +54,6 @@ class GetLessonsAPIView(APIView):
 
 
 class GetQuantityOfStudentsAPIView(APIView):
-    permission_classes = [IsAuthenticated, ]
-
     @staticmethod
     def get(request):
         if request.method == 'GET':
@@ -76,7 +74,7 @@ class RegisterStudentAPIView(APIView):
     def post(request):
         if request.method == "POST":
             product_id = request.POST.get('product_id', '')
-            product = Product.objects.get(id=product_id)
+            product = Product.objects.get(id=int(product_id))
             product.students.add(request.user)
             product.rebuild_groups()
             product.save()

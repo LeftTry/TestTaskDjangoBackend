@@ -1,11 +1,12 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractUser, User
 
 
 class Product(models.Model):
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     name = models.CharField(max_length=255)
     start_time = models.DateTimeField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -13,7 +14,7 @@ class Product(models.Model):
 
     def rebuild_groups(self):
         groups = Group.objects.filter(product_id=self.id).order_by('id')
-        students = self.students
+        students = self.students.all()
 
         min_max_students = 0
         for group in groups:
@@ -37,32 +38,36 @@ class Product(models.Model):
         else:
             target_students_in_group = -1
 
-        if self.students > timezone.now():
+        if self.start_time > timezone.now():
             if target_students_in_group == -1:
                 i = 0
                 for group in groups:
-                    while group.students.count() < group.min_users:
+                    group.students.clear()
+                    while group.students.count() < group.min_users and i < students.count():
                         group.students.add(students[i])
                         i += 1
                 for group in groups:
-                    while group.students.count() < group.max_users:
-                        group.students.all().delete()
+                    group.students.clear()
+                    while group.students.count() < group.max_users and i < students.count():
                         group.students.add(students[i])
                         i += 1
             elif target_students_in_group == -2:
                 i = 0
                 for group in groups:
-                    while group.students.count() < group.min_users:
+                    group.students.all().delete()
+                    while group.students.count() < group.min_users and i < students.count():
                         group.students.add(students[i])
                         i += 1
             else:
                 i = 0
                 for group in groups:
-                    while group.students.count() < group.max_users:
+                    group.students.all().delete()
+                    while group.students.count() < group.max_users and i < students.count():
                         group.students.add(students[i])
                         i += 1
                 for group in groups:
-                    while group.students.count() < target_students_in_group:
+                    group.students.all().delete()
+                    while group.students.count() < target_students_in_group and i < students.count():
                         group.students.add(students[i])
                         i += 1
 
