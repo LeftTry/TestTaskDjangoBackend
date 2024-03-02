@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -33,7 +34,9 @@ class ProductsAPIView(APIView):
         product_author_id = request.POST.get('product_author_id', '')
         if product_name == '' or product_start_time == '' or product_price == '' or product_author_id == '':
             return JsonResponse({"msg": "Incorrect request"}, status=404)
-
+        author = User.objects.get(id=product_author_id)
+        if author is None:
+            return JsonResponse({"msg": "Incorrect author id"}, status=404)
         Product.objects.create(name=product_name, start_time=product_start_time,
                                price=product_price, author_id=product_author_id)
         return JsonResponse({"msg": "Product created"}, status=201)
