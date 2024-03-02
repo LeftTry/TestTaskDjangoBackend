@@ -156,7 +156,7 @@ class StudentAPIView(APIView):
 
     @staticmethod
     def delete(request):
-        product_id = request.POST.get('product_id', '')
+        product_id = request.DELETE.get('product_id', '')
         if product_id == '':
             return JsonResponse({"msg": "Product id is incorrect"}, status=404)
 
